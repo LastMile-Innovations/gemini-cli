@@ -42,6 +42,7 @@ import { FileOperation } from '../telemetry/metrics.js';
 import { getSpecificMimeType } from '../utils/fileUtils.js';
 import { getLanguageFromFilePath } from '../utils/language-detection.js';
 import { FileStateTracker, type FileState } from '../utils/fileStateTracker.js';
+import { FileTrackerService } from '../utils/fileTrackerService.js';
 
 /**
  * Parameters for the WriteFile tool
@@ -98,6 +99,10 @@ export async function getCorrectedFileContent(
     // Capture file state for freshness checking
     try {
       fileState = await fileStateTracker.getFileState(filePath);
+
+      // Register file with global file tracker for agent awareness
+      // Note: This is a static function, so we can't access instance variables
+      // The FileTrackerService will be integrated at the tool invocation level
     } catch {
       // If we can't capture file state, continue without it
       // This shouldn't happen since we just read the file successfully
@@ -160,6 +165,7 @@ class WriteFileToolInvocation extends BaseToolInvocation<
   ToolResult
 > {
   private readonly fileStateTracker: FileStateTracker;
+  private readonly fileTrackerService: FileTrackerService;
 
   constructor(
     private readonly config: Config,
@@ -167,6 +173,7 @@ class WriteFileToolInvocation extends BaseToolInvocation<
   ) {
     super(params);
     this.fileStateTracker = new FileStateTracker();
+    this.fileTrackerService = new FileTrackerService();
   }
 
   override toolLocations(): ToolLocation[] {

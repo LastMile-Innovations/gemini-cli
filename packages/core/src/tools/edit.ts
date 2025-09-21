@@ -38,6 +38,7 @@ import type {
 import { IdeClient } from '../ide/ide-client.js';
 import { safeLiteralReplace } from '../utils/textUtils.js';
 import { FileStateTracker, type FileState } from '../utils/fileStateTracker.js';
+import { FileTrackerService } from '../utils/fileTrackerService.js';
 
 export function applyReplacement(
   currentContent: string | null,
@@ -108,12 +109,14 @@ interface CalculatedEdit {
 
 class EditToolInvocation implements ToolInvocation<EditToolParams, ToolResult> {
   private readonly fileStateTracker: FileStateTracker;
+  private readonly fileTrackerService: FileTrackerService;
 
   constructor(
     private readonly config: Config,
     public params: EditToolParams,
   ) {
     this.fileStateTracker = new FileStateTracker();
+    this.fileTrackerService = new FileTrackerService();
   }
 
   toolLocations(): ToolLocation[] {
@@ -154,6 +157,9 @@ class EditToolInvocation implements ToolInvocation<EditToolParams, ToolResult> {
       // Capture file state for freshness checking
       try {
         fileState = await this.fileStateTracker.getFileState(params.file_path);
+
+        // Register file with global file tracker for agent awareness
+        await this.fileTrackerService.registerFile(params.file_path, fileState);
       } catch {
         // If we can't capture file state, continue without it
         // This shouldn't happen since we just read the file successfully
